@@ -1,9 +1,0 @@
-D:/B-spline-curve-fitting/build/CMakeFiles/B-Spline-curve-fitting.dir
-D:/B-spline-curve-fitting/build/CMakeFiles/INSTALL.dir
-D:/B-spline-curve-fitting/build/CMakeFiles/ALL_BUILD.dir
-D:/B-spline-curve-fitting/build/CMakeFiles/ZERO_CHECK.dir
-D:/B-spline-curve-fitting/build/external/glfw/CMakeFiles/uninstall.dir
-D:/B-spline-curve-fitting/build/external/glfw/CMakeFiles/INSTALL.dir
-D:/B-spline-curve-fitting/build/external/glfw/CMakeFiles/ALL_BUILD.dir
-D:/B-spline-curve-fitting/build/external/glfw/src/CMakeFiles/glfw.dir
-D:/B-spline-curve-fitting/build/external/glfw/src/CMakeFiles/INSTALL.dir
