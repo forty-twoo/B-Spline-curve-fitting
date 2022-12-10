@@ -13,13 +13,9 @@ unsigned int SCR_WIDTH = 1920;
 unsigned int SCR_HEIGHT = 1080;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-
 static void HelpMarker(const char* desc);
-
 static void ShowPlaceholderObject(const char* prefix, int knot_size, std::vector<float>& knot_vec);
-
-static void ShowExampleAppCustomRendering(bool* p_open);
-
+static void ShowCanvas(bool* p_open);
 static void ShowExampleAppLayout(bool* p_open);
 
 int main(int, char**)
@@ -91,36 +87,113 @@ int main(int, char**)
 		ImGui::NewFrame();
 
 
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->WorkPos);
+		ImGui::SetNextWindowSize(viewport->WorkSize);
 
-		ImGui::Begin("B-Spline curve fitting");
-		ImGui::Text("Right click to add control point");
-		if(ImGui::Button("add a control point"))
+		static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+		if(ImGui::Begin("B-Spline curve fitting", nullptr, flags))
 		{
-			cpointsNum++;
+			//left
+			{
+				ImGui::BeginChild("left pane", ImVec2(350, 0), true);
+				ImGui::Text("Right click to add control point");
+				if(ImGui::Button("add a control point"))
+				{
+					cpointsNum++;
+				}
+				ImGui::SameLine();
+				ImGui::Text("control points num = %d", cpointsNum);
+				ImGui::InputInt("degree", &degree);
+				if(ImGui::Button("clear"))
+				{
+					cpointsNum = 0;
+					degree = 0;
+				}
+
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
+				if(ImGui::BeginTable("split", 2, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_Resizable))
+				{
+					ShowPlaceholderObject("Knot Vector", cpointsNum + degree + 1, knot_vec);
+					ImGui::EndTable();
+				}
+				ImGui::PopStyleVar();
+				ImGui::EndChild();
+
+			}
+
+			ImGui::SameLine();
+
+			//right
+			{
+				ImGui::BeginGroup();
+
+
+				if(ImGui::BeginChild("Fitting Method", ImVec2(0, 80), false))
+				{
+					static ImVector<ImVec2> points;
+					static ImVec2 scrolling(0.0f, 0.0f);
+					static bool opt_enable_grid = true;
+					static bool opt_enable_context_menu = true;
+					static bool adding_line = false;
+					if(ImGui::BeginChild("fitting choise", ImVec2(0, 0), false))
+					{
+						if(ImGui::BeginTabBar("##TabBar"))
+						{
+							if(ImGui::BeginTabItem("Interpolation"))
+							{
+								ImGui::SetNextItemWidth(200);
+								const char* interp_method[] = { "Uniform", "Chord Length", "Centripetal", "Universal" };
+								static int interp_choice = 0;
+								ImGui::Combo("Method", &interp_choice, interp_method, IM_ARRAYSIZE(interp_method));
+
+								//ImGui::Text("Interpolation test");
+								ImGui::EndTabItem();
+							}
+
+							if(ImGui::BeginTabItem("Approximation"))
+							{
+								ImGui::Text("Approximation test");
+								ImGui::EndTabItem();
+							}
+							ImGui::EndTabBar();
+						}
+
+					}
+					ImGui::EndChild();
+
+					ImGui::SameLine();
+
+					ImGui::SetNextItemWidth(900);
+					if(ImGui::BeginChild("checking boxx", ImVec2(100, 0), false))
+					{
+						ImGui::Checkbox("Enable grid", &opt_enable_grid);
+						ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
+						ImGui::Text("Mouse Left: drag to move control point,\nMouse Right: drag to scroll, click for add control point.");
+						ImGui::EndChild();
+					}
+					ImGui::EndChild();
+
+				}
+				ImGui::EndChild();
+				//ImGui::Separator();
+
+				//ImGui::BeginGroup();
+				if(ImGui::BeginChild("canvas", ImVec2(0, 0), true))
+				{
+
+					//ImGui::Checkbox("check canvas", &checkf);
+					ShowCanvas(&flag);
+				}
+				ImGui::EndChild();
+
+
+				ImGui::EndGroup();
+			}
+
+
 		}
-		ImGui::SameLine();
-		ImGui::Text("control points num = %d", cpointsNum);
-		ImGui::InputInt("degree", &degree);
-		if(ImGui::Button("clear"))
-		{
-			cpointsNum = 0;
-			degree = 0;
-		}
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
-		if(ImGui::BeginTable("split", 2, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_Resizable))
-		{
-			ShowPlaceholderObject("Knot Vector", cpointsNum + degree + 1, knot_vec);
-			ImGui::EndTable();
-		}
-		ImGui::PopStyleVar();
-
-
-		//ShowExampleAppCustomRendering(&flag);
-
 		ImGui::End();
-
-		ShowExampleAppLayout(&flag);
 
 		//Render
 		ImGui::Render();
@@ -156,9 +229,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	//ImGui::GetStyle().WindowMinSize = ImVec2((float)SCR_WIDTH * 0.2f, (float)SCR_HEIGHT);
 }
 
-static void ShowExampleAppCustomRendering(bool* p_open)
+static void ShowCanvas(bool* p_open)
 {
-	ImGui::SameLine();
 
 	static ImVector<ImVec2> points;
 	static ImVec2 scrolling(0.0f, 0.0f);
@@ -166,9 +238,10 @@ static void ShowExampleAppCustomRendering(bool* p_open)
 	static bool opt_enable_context_menu = true;
 	static bool adding_line = false;
 
+
+
 	ImGui::Checkbox("Enable grid", &opt_enable_grid);
-	ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
-	ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
+	ImGui::Text("Mouse Left: drag to move control point,\nMouse Right: drag to scroll, click for add control point.");
 
 	// Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
 	// Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
@@ -187,6 +260,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
 	if(canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
 	if(canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
 	ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+	//std::cout << canvas_p1.x << " " << canvas_p1.y << std::endl;
 
 	// Draw border and background color
 	ImGuiIO& io = ImGui::GetIO();
@@ -200,6 +274,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
 	const bool is_active = ImGui::IsItemActive();   // Held
 	const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
 	const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+	std::cout << io.MousePos.x << " " << io.MousePos.y << '\n';
 
 	// Add first and second point
 	if(is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -285,7 +360,7 @@ static void ShowPlaceholderObject(const char* prefix, int knot_size, std::vector
 	ImGui::AlignTextToFramePadding();
 	bool node_open = ImGui::TreeNode("Knot", "%s", prefix);
 	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("Value be non-decreasing");
+	ImGui::Text("Value");
 
 	if(node_open)
 	{
