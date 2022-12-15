@@ -21,7 +21,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/include/GLFW)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/glad/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/tinynurbs)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/glm/glm)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/glm)
 
 # add source files
 file(GLOB_RECURSE PROJECT_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h*)
@@ -30,6 +30,7 @@ file(GLOB_RECURSE IMGUI_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/
 file(GLOB_RECURSE TINYNURBS_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/external/tinynurbs/*.h*)
 file(GLOB_RECURSE IMGUI_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/src/*.cpp)
 file(GLOB_RECURSE GLAD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/src/*.c)
+file(GLOB_RECURSE SHADER_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/assets/*.fs *.vs)
 
 # group files in IDE
 source_group("src" FILES ${PROJECT_SRC_FILES})
@@ -37,6 +38,7 @@ source_group("include" FILES ${PROJECT_HEADER_FILES})
 source_group("external\\imgui" FILES ${IMGUI_SRC_FILES})
 source_group("external\\glad" FILES ${GLAD_SRC_FILES} )
 source_group("external\\tinynurbs" FILES ${TINYNURBS_HEADER_FILES} )
+source_group("shaders" FILES ${SHADER_SRC_FILES} )
 
 #create executable 
 add_executable( ${PROJECT_NAME} 
@@ -45,7 +47,8 @@ add_executable( ${PROJECT_NAME}
                     ${IMGUI_HEADER_FILES}
                     ${IMGUI_SRC_FILES}
                     ${TINYNURBS_HEADER_FILES}
-                    ${GLAD_SRC_FILES})
+                    ${GLAD_SRC_FILES}
+                    ${SHADER_SRC_FILES})
 
 # link libraries
 target_link_libraries(${PROJECT_NAME} glfw)
