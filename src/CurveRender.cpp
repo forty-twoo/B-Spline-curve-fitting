@@ -14,12 +14,15 @@ void CurveRender::SetUpVBO(std::vector<glm::dvec3>& cPts, std::vector<glm::dvec3
 	glBindVertexArray(m_VAOcurve);
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBOcurve);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::dvec3) * m_vertices.size(), m_vertices.data(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(glm::dvec3), (void*)nullptr);
+
 	glEnableVertexAttribArray(0);
 
 	m_controlPoints = cPts;
 	glBindVertexArray(m_VAOconstruct);
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBOconstruct);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::dvec3) * m_controlPoints.size(), m_controlPoints.data(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(glm::dvec3), (void*)nullptr);
 	glEnableVertexAttribArray(0);
 }
 

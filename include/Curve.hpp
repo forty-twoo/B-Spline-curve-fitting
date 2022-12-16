@@ -23,8 +23,11 @@ public:
 
 		curve.degree = degree_;
 	}
+	std::vector<glm::dvec3>& GetControlPoints() {
+		return curve.control_points;
+	}
 	std::vector<glm::dvec3>& ConstructCurve(const unsigned int degree_, const std::vector<double>& knots_, const std::vector<glm::dvec3>& controlPts);
-	int ControlPtsSize() const {
+	unsigned int ControlPtsSize() const {
 		return curve.control_points.size();
 	}
 	const int GetDegree() const {

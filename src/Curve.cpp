@@ -4,6 +4,7 @@ std::vector<glm::dvec3>& Curve::ConstructCurve(const unsigned int degree_, const
 	curve.control_points = controlPts;
 	curve.degree = degree_;
 	curve.knots = knots_;
+	curvePts.clear();
 
 	double t = *(knots_.end() - 1);
 
