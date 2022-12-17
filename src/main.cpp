@@ -45,6 +45,7 @@ bool hideConstruction(false);
 bool firstMouse = true;
 bool nowgenerate(true);
 bool isAddPoints(false);
+bool isAddDegree(false);
 bool isChangedKnotValue(false);
 
 //any cursor movement will update its value
@@ -79,6 +80,7 @@ static float colChord[3];
 static float colCentripetal[3];
 static float colUniversal[3];
 static float colAppro[3];
+static float curveColor[3] = { 1.0, 0, 0 };
 
 void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hideConstruction) {
 
@@ -106,6 +108,8 @@ void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hid
 			curve.Setknots(knots);
 			regenerate = true;
 		}
+		ImGui::ColorEdit3("curveColor", curveColor);
+		std::cout << curveColor[1] << '\n';
 
 		ImGui::Dummy(ImVec2(0.0f, 6.0f));
 		ImGui::Checkbox(" Hide Control Points", &hideConstruction);
@@ -117,6 +121,7 @@ void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hid
 		ImGui::InputInt("degree", &degree);
 		if(degree != curve.GetDegree()) {
 			curve.SetDegree(degree);
+			isAddDegree = true;
 			//regenerate = true;
 		}
 
@@ -136,7 +141,7 @@ void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hid
 			//std::cout << "knotSize :" << knotSz << " VS " << knot_vec.size() << "\n";
 			//std::cout << "now Add point Flag:" << isAddPoints << '\n';
 
-			if(knots.size() < knotSz && isAddPoints) {
+			if(knots.size() < knotSz && (isAddPoints || isAddDegree)) {
 				knots.resize(knotSz);
 				double num = knotSz - 2 * degree - 1;
 				double delta = (double)1.0 / num;
@@ -152,8 +157,7 @@ void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hid
 				regenerate = true;
 				isAddPoints = false;
 			}
-
-
+			knots.resize(knotSz);
 
 			for(int i = 0; i < knotSz; i++) {
 				ImGui::PushID(i); // Use field index as identifier.
@@ -364,7 +368,7 @@ int main(int, char**) {
 		displayMousePos(nullptr);
 
 		RenderGUI(curve, crenderer, regenerate, hideConstruction);
-		crenderer.Draw(shaderCurve, shaderCPts, hideConstruction);
+		crenderer.Draw(shaderCurve, shaderCPts, glm::vec3(curveColor[0], curveColor[1], curveColor[2]), hideConstruction);
 
 
 	}

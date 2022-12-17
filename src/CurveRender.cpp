@@ -26,9 +26,10 @@ void CurveRender::SetUpVBO(std::vector<glm::dvec3>& cPts, std::vector<glm::dvec3
 	glEnableVertexAttribArray(0);
 }
 
-void CurveRender::Draw(const Shader& shaderCurve, const Shader& shaderCPts, bool hideConstruction) {
+void CurveRender::Draw(const Shader& shaderCurve, const Shader& shaderCPts, glm::vec3 curveColor, bool hideConstruction) {
 	glLineWidth(8.0);
 	shaderCurve.use();
+	shaderCurve.setVec3("curveColor", curveColor);
 	glBindVertexArray(m_VAOcurve);
 	glDrawArrays(GL_LINE_STRIP, 0, m_vertices.size());
 
@@ -37,7 +38,7 @@ void CurveRender::Draw(const Shader& shaderCurve, const Shader& shaderCPts, bool
 		glPointSize(10.0);
 		glBindVertexArray(m_VAOconstruct);
 		glDrawArrays(GL_POINTS, 0, m_controlPoints.size());
-		glLineWidth(2.0);
+		glLineWidth(0.5);
 		glDrawArrays(GL_LINE_STRIP, 0, m_controlPoints.size());
 	}
 

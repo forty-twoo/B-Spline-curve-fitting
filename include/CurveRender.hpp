@@ -23,7 +23,7 @@ public:
 
 	void SetUpVBO(std::vector<glm::dvec3>& cPts, std::vector<glm::dvec3>& vertices);
 
-	void Draw(const Shader& shaderCurve, const Shader& shaderCPts, bool hideConstruction);
+	void Draw(const Shader& shaderCurve, const Shader& shaderCPts, glm::vec3 curveColor, bool hideConstruction);
 
 	void CleanUp();
 
