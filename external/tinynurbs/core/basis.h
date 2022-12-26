@@ -80,7 +80,7 @@ namespace tinynurbs {
 	T bsplineOneBasis(int i, unsigned int deg, const std::vector<T>& U, T u) {
 		int m = static_cast<int>(U.size()) - 1;
 		// Special case
-		if((i == 0 && close(u, U[0])) || (i == m - deg - 1 && close(u, U[m]))) {
+		if((i == 0 && util::close(u, U[0])) || (i == m - deg - 1 && util::close(u, U[m]))) {
 			return 1.0;
 		}
 		// Local property ensures that basis function is zero outside span

@@ -1,6 +1,6 @@
 #include "Curve.hpp"
 
-std::vector<glm::dvec3>& Curve::ConstructCurve(const unsigned int degree_, const std::vector<double>& knots_, const std::vector<glm::dvec3>& controlPts) {
+void Curve::ConstructCurve(const unsigned int degree_, const std::vector<double>& knots_, const std::vector<glm::dvec3>& controlPts) {
 	curve.control_points = controlPts;
 	curve.degree = degree_;
 	curve.knots = knots_;
@@ -13,5 +13,4 @@ std::vector<glm::dvec3>& Curve::ConstructCurve(const unsigned int degree_, const
 		auto it = tinynurbs::curvePoint(curve, i);
 		curvePts.push_back(it);
 	}
-	return curvePts;
 }

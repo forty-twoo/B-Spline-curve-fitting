@@ -10,6 +10,19 @@
 // Include GLFW
 #include <GLFW/glfw3.h>
 
+class PointsRender {
+private:
+	std::vector<glm::dvec3> m_points;
+	unsigned int m_VAO, m_VBO;
+public:
+	PointsRender() :m_VAO(0), m_VBO(0) {}
+	void Init();
+	void SetUpVBO(std::vector<glm::dvec3>& points);
+	void Draw(const Shader& shaderPoints);
+	void CleanUp();
+	void Clear();
+};
+
 class CurveRender {
 private:
 	unsigned int m_VAOcurve, m_VAOconstruct, m_VBOcurve, m_VBOconstruct;

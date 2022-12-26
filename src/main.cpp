@@ -9,6 +9,7 @@
 #include "Shader.hpp"
 #include "Curve.hpp"
 #include "CurveRender.hpp"
+#include "Interpolation.hpp"
 
 #include <iostream>
 #include <vector>
@@ -23,30 +24,38 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 static void HelpMarker(const char* desc);
 static void ShowKnots(const char* prefix, int knot_size, std::vector<double>& knot_vec);
 static void ShowControlPts(const char* prefix, int knot_size, std::vector<glm::dvec3>& controlPts);
-static void ShowCanvas(bool* p_open);
-static void ShowExampleAppLayout(bool* p_open);
 void displayMousePos(bool* p_open);
 
-void listenToAddPoint(double& lastCursorX, double& lastCursorY, Curve& curve, bool& regenerate);
-void listenToPointChange(int& indexToModify, Curve& curve, bool& regenerate);
+void listenToAddPoint(double& lastCursorX, double& lastCursorY, std::vector<glm::dvec3>& points, bool& regenerate);
+void listenToPointChange(int& indexToModify, std::vector<glm::dvec3>& points, bool& regenerate);
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 bool nearlyEqual(double a, double b, double epsilon);
-void setUpRender(Curve& curve, CurveRender& renderer);
 
 
 static int degree = 2;
-bool regenerate(false);
-std::vector<double> knots;
+static int curDegree = 2;
+bool regenerate(true);
 bool flag(true);
-bool hideConstruction(false);
+bool hideConstruction[5] = { 1, 1, 1, 1, 1 };
 bool firstMouse = true;
 bool nowgenerate(true);
-bool isAddPoints(false);
+bool isPointsChange(false);
 bool isAddDegree(false);
 bool isChangedKnotValue(false);
+std::vector<double> knots;
+std::vector<glm::dvec3> sceen_points;
+
+static Curve curve[5];
+static CurveRender crenderer[5];
+static PointsRender prenderer = PointsRender();
+
+#define UNIFORM_INTERP 1
+#define CHORLD_INTERP 2
+#define CENTRIPETAL_INTERP 3
+#define UNIVERSAL_INTERP 4
 
 //any cursor movement will update its value
 float lastX, lastY;
@@ -54,228 +63,121 @@ float lastX, lastY;
 //cursor position when mouse right clicked 
 double cursorXpos, cursorYpos;
 
-void InitCurve(Curve& curve) {
-	curve.clear();
-	curve.GetControlPoints().push_back(glm::dvec3(-0.8, -0.4, 0.0));
-	curve.GetControlPoints().push_back(glm::dvec3(-0.5, -0.3, 0.0));
-	curve.GetControlPoints().push_back(glm::dvec3(-0.1, -0.7, 0.0));
-	curve.GetControlPoints().push_back(glm::dvec3(0.3, 0.1, 0.0));
-	curve.GetControlPoints().push_back(glm::dvec3(0.5, -0.5, 0.0));
-	curve.GetControlPoints().push_back(glm::dvec3(0.8, 0.4, 0.0));
-	knots = { 0, 0, 0, 0.3, 0.4, 0.5, 0.6, 0.7, 1 };
-	curve.Setknots(knots);
-	curve.SetDegree(2);
+bool firstGen = true;
+static bool FlagDraw[5] = { 1, 1, 1, 1, 1 };
+static float curveColor[5][3] = { { 0, 0.5, 0.6 }, { 0.1, 0.3, 1 }, { 0.7, 0.3, 0.4 }, { 0.7, 0.7, 1 }, { 1, 0.6, 0.5 } };
+
+void InitSceenPoints() {
+	sceen_points.push_back(glm::dvec3(-0.1, -0.6, 0));
+	sceen_points.push_back(glm::dvec3(0, 0, 0));
+	sceen_points.push_back(glm::dvec3(0.5, -0.2, 0));
+	sceen_points.push_back(glm::dvec3(0.3, 0.4, 0));
+
 
 
 }
-bool firstGen = true;
-static bool InterpUniform(false);
-static bool InterpChord(false);
-static bool InterpCentripetal(false);
-static bool InterpUniversal(false);
-static bool ApproGlobal(false);
 
-static float colUnifrom[3];
-static float colChord[3];
-static float colCentripetal[3];
-static float colUniversal[3];
-static float colAppro[3];
-static float curveColor[3] = { 1.0, 0, 0 };
 
-void RenderGUI(Curve& curve, CurveRender& crenderer, bool& regenerate, bool& hideConstruction) {
+void RenderGUI_new(Curve curve[5], CurveRender crenderer[5], bool& regenerate, bool hideConstruction[5]) {
 
-	//static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0.2, 0.4, 0.1));
 	if(ImGui::Begin("B-Spline curve fitting", nullptr, ImGuiWindowFlags_NoMove)) {
 		ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Once);
-
-		//std::cout << "isAddPoints  :" << isAddPoints << '\n';
-		//left
-		//ImGui::SameLine();
-		//ImGui::Text("control points num = %d", controlPts.size());
-		//ImGui::Dummy(ImVec2(0.0f, 6.0f));
-		if(ImGui::Button("clear")) {
-			curve.clear();
-			knots.clear();
-			crenderer.Clear();
-			degree = 0;
-			regenerate = true;
-		}
-		//ImGui::Dummy(ImVec2(0.f, 0.0f));
-
-		ImGui::SameLine();
-		if(ImGui::Button("Generate Curve")) {
-			curve.Setknots(knots);
-			regenerate = true;
-		}
-		ImGui::ColorEdit3("curveColor", curveColor);
-		std::cout << curveColor[1] << '\n';
-
-		ImGui::Dummy(ImVec2(0.0f, 6.0f));
-		ImGui::Checkbox(" Hide Control Points", &hideConstruction);
-
-		ImGui::Dummy(ImVec2(0.0f, 6.0f));
-		ImGui::Text("Right click to add control point");
-
-		ImGui::SetNextItemWidth(150.f);
-		ImGui::InputInt("degree", &degree);
-		if(degree != curve.GetDegree()) {
-			curve.SetDegree(degree);
-			isAddDegree = true;
-			//regenerate = true;
-		}
-
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
-
-		if(ImGui::BeginTable("split", 2, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_Resizable)) {
-			//std::cout << knots.size() << "  VS  " << curve.ControlPtsSize() + degree + 1 << "\n";
-			int knotSz = curve.ControlPtsSize() + degree + 1;
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::AlignTextToFramePadding();
-			bool node_open = ImGui::TreeNode("Knot_Vector", "Knot Vector");
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("Value: [0, 1]");
-
-			//std::cout << "knotSize :" << knotSz << " VS " << knot_vec.size() << "\n";
-			//std::cout << "now Add point Flag:" << isAddPoints << '\n';
-
-			if(knots.size() < knotSz && (isAddPoints || isAddDegree)) {
-				knots.resize(knotSz);
-				double num = knotSz - 2 * degree - 1;
-				double delta = (double)1.0 / num;
-				for(int i = 0; i <= degree; i++) {
-					knots[i] = 0;
-				}
-				for(int i = degree + 1; i < degree + num + 1; i++) {
-					knots[i] = knots[i - 1] + delta;
-				}
-				for(int i = degree + num + 1; i < knotSz; i++) {
-					knots[i] = 1;
-				}
-				regenerate = true;
-				isAddPoints = false;
-			}
-			knots.resize(knotSz);
-
-			for(int i = 0; i < knotSz; i++) {
-				ImGui::PushID(i); // Use field index as identifier.
-					// Here we use a TreeNode to highlight on hover (we could use e.g. Selectable as well)
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::AlignTextToFramePadding();
-				ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
-				ImGui::TreeNodeEx("Field", flags, "Knot_%d", i);
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::SetNextItemWidth(-FLT_MIN);
-				float lastKnotValue = knots[i];
-				ImGui::InputDouble("value", &knots[i]);
-				if(knots[i] != lastKnotValue) {
-					isChangedKnotValue = true;
-					regenerate = true;
-				}
-				//ImGui::DragFloat("##value", &placeholder_members[i], 0.01f);
-				ImGui::NextColumn();
-				ImGui::PopID();
-			}
-			ImGui::TreePop();
-			ImGui::Separator();
-
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::AlignTextToFramePadding();
-			bool controlP_open = ImGui::TreeNode("Control Points", "Control Points");
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("Coordinate: [-1, 1]");
-
-
-			if(controlP_open) {
-				for(int i = 0; i < curve.ControlPtsSize(); i++) {
-					ImGui::PushID(i); // Use field index as identifier.
-						// Here we use a TreeNode to highlight on hover (we could use e.g. Selectable as well)
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::AlignTextToFramePadding();
-					ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
-					ImGui::TreeNodeEx("Field", flags, "point_%d", i);
-					ImGui::TableSetColumnIndex(1);
-					ImGui::SetNextItemWidth(-FLT_MIN);
-					ImGui::Text("(%.5lf, %.5lf)", curve.GetControlPoints()[i].x, curve.GetControlPoints()[i].y);
-					ImGui::NextColumn();
-					ImGui::PopID();
-				}
-				ImGui::TreePop();
-			}
-
-
-
-			ImGui::EndTable();
-		}
-
-		ImGui::PopStyleVar();
-
-
-
 		ImGui::Spacing();
+		ImGui::SetNextItemWidth(150.f);
+		ImGui::InputInt("degree", &curDegree);
+		if(curDegree != degree) {
+			degree = curDegree;
+			regenerate = true;
+		}
+
 		if(ImGui::TreeNode("Fitting Method")) {
 			if(ImGui::TreeNode("Interpolation")) {
-				ImGui::Checkbox("     Uniform", &InterpUniform);
-				ImGui::SameLine();
-				ImGui::ColorEdit3("color", colUnifrom, ImGuiColorEditFlags_NoInputs);
+				if(ImGui::TreeNode("Uniform")) {
+					ImGui::Checkbox("Generate", &FlagDraw[0]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[0], ImGuiColorEditFlags_NoInputs);
 
-				ImGui::Checkbox("        Chorld", &InterpChord);
-				ImGui::SameLine();
-				ImGui::ColorEdit3("color", colChord, ImGuiColorEditFlags_NoInputs);
+					ImGui::Checkbox("hide control points", &hideConstruction[0]);
+					ImGui::TreePop();
+				}
 
-				ImGui::Checkbox("Centripetal", &InterpCentripetal);
-				ImGui::SameLine();
-				ImGui::ColorEdit3("color", colCentripetal, ImGuiColorEditFlags_NoInputs);
+				if(ImGui::TreeNode("Chorld")) {
+					ImGui::Checkbox("Generate", &FlagDraw[1]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[1], ImGuiColorEditFlags_NoInputs);
 
-				ImGui::Checkbox("  Universal ", &InterpUniversal);
-				ImGui::SameLine();
-				ImGui::ColorEdit3("color", colUniversal, ImGuiColorEditFlags_NoInputs);
+					ImGui::Checkbox("hide control points", &hideConstruction[1]);
+					ImGui::TreePop();
+				}
 
+				if(ImGui::TreeNode("Centripetal")) {
+					ImGui::Checkbox("Generate", &FlagDraw[2]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[2], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[2]);
+					ImGui::TreePop();
+				}
+
+				if(ImGui::TreeNode("Universal")) {
+					ImGui::Checkbox("Generate", &FlagDraw[3]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[3], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[3]);
+					ImGui::TreePop();
+				}
 				ImGui::TreePop();
 			}
-			if(ImGui::TreeNode("Approximation")) {
-				ImGui::Checkbox("Global", &ApproGlobal);
-				ImGui::SameLine();
-				ImGui::ColorEdit3("color", colAppro, ImGuiColorEditFlags_NoInputs);
-
-				ImGui::TreePop();
-			}
-
 			ImGui::TreePop();
 		}
-
-	}
-	ImGui::End();
-	if(firstGen) {
-		setUpRender(curve, crenderer);
-		firstGen = false;
+		ImGui::PopStyleColor();
+		ImGui::End();
 	}
 
-	if((regenerate || isAddPoints || isChangedKnotValue) && !curve.GetControlPoints().empty()) {
-		if(isAddPoints) {
-			curve.Setknots(knots);
-			isAddPoints = false;
-		} else if(isChangedKnotValue) {
-			curve.Setknots(knots);
-			isChangedKnotValue = false;
-		}
-		setUpRender(curve, crenderer);
+
+	if(regenerate) {
+		std::vector<double> knots;
+		std::vector<double> param;
+		std::vector<glm::dvec3> controlPts;
+
+		knots.clear(), param.clear(), controlPts.clear();
+		UniformInterp(sceen_points, degree, knots, param);
+		GlobalInterp(sceen_points, degree, knots, param, controlPts);
+		curve[0].ConstructCurve(degree, knots, controlPts);
+
+		crenderer[0].SetUpVBO(curve[0].GetControlPoints(), curve[0].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		ChorldInterp(sceen_points, degree, knots, param);
+		GlobalInterp(sceen_points, degree, knots, param, controlPts);
+		curve[1].ConstructCurve(degree, knots, controlPts);
+
+		crenderer[1].SetUpVBO(curve[1].GetControlPoints(), curve[1].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		CentriperalInterp(sceen_points, degree, knots, param);
+		GlobalInterp(sceen_points, degree, knots, param, controlPts);
+		curve[2].ConstructCurve(degree, knots, controlPts);
+
+		crenderer[2].SetUpVBO(curve[2].GetControlPoints(), curve[2].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		UniversalInterp(sceen_points, degree, knots, param);
+		GlobalInterp(sceen_points, degree, knots, param, controlPts);
+		curve[3].ConstructCurve(degree, knots, controlPts);
+
+		crenderer[3].SetUpVBO(curve[3].GetControlPoints(), curve[3].GetCurvePoints());
+
 		regenerate = false;
 	}
 
-
 	//Render
 	ImGui::Render();
-
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 }
+
 
 int main(int, char**) {
 	// glfw: initialize and configure
@@ -325,9 +227,13 @@ int main(int, char**) {
 	ImGui::GetIO().FontGlobalScale = 1.0;
 	ImGui::GetIO().Fonts->AddFontFromFileTTF("../assets/fonts/NotoSans-Regular.ttf", 28.0f);
 
-	CurveRender crenderer = CurveRender();
-	crenderer.Clear();
-	crenderer.Init();
+	for(int i = 0; i < 5; i++) {
+		crenderer[i] = CurveRender();
+		crenderer[i].Clear();
+		crenderer[i].Init();
+	}
+	prenderer.Clear();
+	prenderer.Init();
 
 	// Our state
 	bool show_another_window = false;
@@ -337,17 +243,18 @@ int main(int, char**) {
 	// Main loop
 
 	static int degree, cpointsNum = 0;
-	Curve curve;
-	InitCurve(curve);
+	Curve curve5;
+	//InitCurve(curve);
 	int idxToModify = -1;
 	double lastCursorX = 0, lastCursorY = 0;
 
 	// create shaders
-	Shader shaderCurve = Shader("../assets/shaders/curve.vs", "../assets/shaders/curve.fs");
-	Shader shaderCPts = Shader("../assets/shaders/controlPts.vs", "../assets/shaders/controlPts.fs");
+	Shader shaderCurve = Shader("../assets/shaders/curve.vs.glsl", "../assets/shaders/curve.fs.glsl");
+	Shader shaderCPts = Shader("../assets/shaders/controlPts.vs.glsl", "../assets/shaders/controlPts.fs.glsl");
+	Shader shaderPoints = Shader("../assets/shaders/points.vs.glsl", "../assets/shaders/points.fs.glsl");
+	InitSceenPoints();
 
 
-	static std::vector<double> knot_vec;
 	while(!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glfwSwapBuffers(window);
@@ -362,13 +269,28 @@ int main(int, char**) {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		listenToAddPoint(lastCursorX, lastCursorY, curve, regenerate);
-		listenToPointChange(idxToModify, curve, regenerate);
+		listenToAddPoint(lastCursorX, lastCursorY, sceen_points, regenerate);
+		listenToPointChange(idxToModify, sceen_points, regenerate);
 
 		displayMousePos(nullptr);
 
-		RenderGUI(curve, crenderer, regenerate, hideConstruction);
-		crenderer.Draw(shaderCurve, shaderCPts, glm::vec3(curveColor[0], curveColor[1], curveColor[2]), hideConstruction);
+		//RenderGUI(curve, crenderer, regenerate, hideConstruction);
+		//crenderer.Draw(shaderCurve, shaderCPts, glm::vec3(curveColor[0], curveColor[1], curveColor[2]), hideConstruction);
+
+
+		if(isPointsChange || firstGen) {
+			prenderer.SetUpVBO(sceen_points);
+			isPointsChange = false;
+			firstGen = false;
+		}
+		RenderGUI_new(curve, crenderer, regenerate, hideConstruction);
+		prenderer.Draw(shaderPoints);
+		for(int i = 0; i < 4; i++) {
+			if(FlagDraw[i])
+				crenderer[i].Draw(shaderCurve, shaderCPts, glm::vec3(curveColor[i][0], curveColor[i][1], curveColor[i][2]), hideConstruction[i]);
+
+		}
+
 
 
 	}
@@ -394,114 +316,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	//ImGui::GetStyle().WindowMinSize = ImVec2((float)SCR_WIDTH * 0.2f, (float)SCR_HEIGHT);
 }
 
-static void ShowCanvas(bool* p_open) {
-
-	static ImVector<ImVec2> points;
-	static ImVec2 scrolling(0.0f, 0.0f);
-	static bool opt_enable_grid = true;
-	static bool opt_enable_context_menu = true;
-	static bool adding_line = false;
-
-	ImGui::Checkbox("Enable grid", &opt_enable_grid);
-	ImGui::Text("Mouse Left: drag to move control point,\nMouse Right: drag to scroll, click for add control point.");
-
-	// Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
-	// Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
-	// To use a child window instead we could use, e.g:
-	//      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));      // Disable padding
-	//      ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(50, 50, 50, 255));  // Set a background color
-	//      ImGui::BeginChild("canvas", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoMove);
-	//      ImGui::PopStyleColor();
-	//      ImGui::PopStyleVar();
-	//      [...]
-	//      ImGui::EndChild();
-
-	// Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
-	ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
-	ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
-	if(canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
-	if(canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
-	ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
-	//std::cout << canvas_p1.x << " " << canvas_p1.y << std::endl;
-
-	// Draw border and background color
-	ImGuiIO& io = ImGui::GetIO();
-	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
-	draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
-
-	// This will catch our interactions
-	ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-	const bool is_hovered = ImGui::IsItemHovered(); // Hovered
-	const bool is_active = ImGui::IsItemActive();   // Held
-	const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
-	const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
-	//std::cout << canvas_p0.x << "," << canvas_p0.y << std::endl;
-	//std::cout << io.MousePos.x - origin.x << " " << io.MousePos.y - origin.y << '\n';
-
-	// Add first and second point
-	if(is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-
-		points.push_back(mouse_pos_in_canvas);
-		//std::cout << "1 :(" << mouse_pos_in_canvas.x << "," << mouse_pos_in_canvas.y << std::endl;
-		points.push_back(mouse_pos_in_canvas);
-		//std::cout << "2 :(" << mouse_pos_in_canvas.x << "," << mouse_pos_in_canvas.y << std::endl;
-		adding_line = true;
-	}
-	if(adding_line) {
-		points.back() = mouse_pos_in_canvas;
-		//std::cout << "3 :(" << mouse_pos_in_canvas.x << "," << mouse_pos_in_canvas.y << std::endl;
-		if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-			adding_line = false;
-	}
-
-	//Right Click to add point
-
-
-
-
-
-
-
-	// Pan (we use a zero mouse threshold when there's no context menu)
-	// You may decide to make that threshold dynamic based on whether the mouse is hovering something etc.
-	const float mouse_threshold_for_pan = opt_enable_context_menu ? -1.0f : 0.0f;
-	if(is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right, mouse_threshold_for_pan)) {
-		scrolling.x += io.MouseDelta.x;
-		scrolling.y += io.MouseDelta.y;
-	}
-
-	// Context menu (under default mouse threshold)
-	ImVec2 drag_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, mouse_threshold_for_pan);
-	if(opt_enable_context_menu && drag_delta.x == 0.0f && drag_delta.y == 0.0f)
-		ImGui::OpenPopupOnItemClick("context", ImGuiPopupFlags_MouseButtonRight);
-	if(ImGui::BeginPopup("context")) {
-		if(adding_line)
-			points.resize(points.size() - 2);
-		adding_line = false;
-		if(ImGui::MenuItem("Remove one", NULL, false, points.Size > 0)) {
-			points.resize(points.size() - 2);
-		}
-		if(ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) {
-			points.clear();
-		}
-		ImGui::EndPopup();
-	}
-
-	// Draw grid + all lines in the canvas
-	draw_list->PushClipRect(canvas_p0, canvas_p1, true);
-	if(opt_enable_grid) {
-		const float GRID_STEP = 64.0f;
-		for(float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-			draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
-		for(float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-			draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
-	}
-	for(int n = 0; n < points.Size; n += 2)
-		draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
-	draw_list->PopClipRect();
-
-}
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 // In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
@@ -530,66 +344,6 @@ static void ShowKnots(const char* prefix, int knotSz, std::vector<double>& knot_
 	// Text and Tree nodes are less high than framed widgets, using AlignTextToFramePadding() we add vertical spacing to make the tree lines equal high.
 }
 
-// Demonstrate create a window with multiple child windows.
-static void ShowExampleAppLayout(bool* p_open) {
-	ImGui::SetNextWindowSize(ImVec2(800, 440), ImGuiCond_FirstUseEver);
-	if(ImGui::Begin("Example: Simple layout", p_open, ImGuiWindowFlags_MenuBar)) {
-		if(ImGui::BeginMenuBar()) {
-			if(ImGui::BeginMenu("File")) {
-				if(ImGui::MenuItem("Close", "Ctrl+W")) {
-					*p_open = false;
-				}
-				ImGui::EndMenu();
-			}
-			ImGui::EndMenuBar();
-		}
-
-		if(ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_W))
-			*p_open = false;
-
-		// Left
-		static int selected = 0;
-		{
-			ImGui::BeginChild("left pane", ImVec2(150, 0), true);
-			for(int i = 0; i < 100; i++) {
-				// FIXME: Good candidate to use ImGuiSelectableFlags_SelectOnNav
-				char label[128];
-				sprintf(label, "MyObject %d", i);
-				if(ImGui::Selectable(label, selected == i))
-					selected = i;
-			}
-			ImGui::EndChild();
-		}
-		ImGui::SameLine();
-
-		// Right
-		{
-			ImGui::BeginGroup();
-			ImGui::BeginChild("item view", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
-			ImGui::Text("MyObject: %d", selected);
-			ImGui::Separator();
-			if(ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None)) {
-				if(ImGui::BeginTabItem("Description")) {
-					ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ");
-					ImGui::EndTabItem();
-				}
-				if(ImGui::BeginTabItem("Details")) {
-					ImGui::Text("ID: 0123456789");
-					ImGui::EndTabItem();
-				}
-				ImGui::EndTabBar();
-			}
-			ImGui::EndChild();
-			if(ImGui::Button("Revert")) {
-			}
-			ImGui::SameLine();
-			if(ImGui::Button("Save")) {
-			}
-			ImGui::EndGroup();
-		}
-	}
-	ImGui::End();
-}
 
 // glfw: whenever the mouse moves, this callback is called
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -637,40 +391,38 @@ void displayMousePos(bool* p_open) {
 
 //When mouse right click, the cursorXpos/cursorYpos changes, the function will update the lastCursor value
 //Then a new control point can be added to the curve
-void listenToAddPoint(double& lastCursorX, double& lastCursorY, Curve& curve, bool& regenerate) {
+void listenToAddPoint(double& lastCursorX, double& lastCursorY, std::vector<glm::dvec3>& points, bool& regenerate) {
 	if(lastCursorX != cursorXpos || lastCursorY != cursorYpos) {
-		curve.GetControlPoints().emplace_back(glm::dvec3((cursorXpos / SCR_WIDTH) * 2.0 - 1.0, (-cursorYpos / SCR_HEIGHT) * 2.0 + 1.0, 0.0));
+		points.emplace_back(glm::dvec3((cursorXpos / SCR_WIDTH) * 2.0 - 1.0, (-cursorYpos / SCR_HEIGHT) * 2.0 + 1.0, 0.0));
 		lastCursorX = cursorXpos, lastCursorY = cursorYpos;
-		isAddPoints = true;
-		std::cout << "Flad   isAddPoints  :" << isAddPoints << '\n';
+		isPointsChange = true;
+		regenerate = true;
+		//std::cout << "Flad   isAddPoints  :" << isAddPoints << '\n';
 		//regenerate = true;
 	}
 
 }
 
 
-void listenToPointChange(int& indexToModify, Curve& curve, bool& regenerate) {
+void listenToPointChange(int& indexToModify, std::vector<glm::dvec3>& points, bool& regenerate) {
 	if(glfwGetMouseButton(glfwGetCurrentContext(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 		double xpos, ypos;
 		glfwGetCursorPos(glfwGetCurrentContext(), &xpos, &ypos);
 		xpos = (xpos / SCR_WIDTH) * 2.0 - 1.0;
 		ypos = (-ypos / SCR_HEIGHT) * 2.0 + 1.0;
 
-		for(unsigned int i = 0; i < curve.ControlPtsSize(); i++) {
-			if(nearlyEqual(xpos, curve.GetControlPoints().at(i).x, 0.05) && nearlyEqual(ypos, curve.GetControlPoints().at(i).y, 0.05)) {
+		for(unsigned int i = 0; i < points.size(); i++) {
+			if(nearlyEqual(xpos, points.at(i).x, 0.05) && nearlyEqual(ypos, points.at(i).y, 0.05)) {
 				indexToModify = (int)i;
 			}
 		}
 		if(indexToModify != -1) {
-			curve.GetControlPoints().at(indexToModify) = glm::dvec3(xpos, ypos, 0.0);
+			points.at(indexToModify) = glm::dvec3(xpos, ypos, 0.0);
+			isPointsChange = true;
 			regenerate = true;
 		}
 
 	}
 	if(glfwGetMouseButton(glfwGetCurrentContext(), GLFW_MOUSE_BUTTON_LEFT) != GLFW_PRESS) indexToModify = -1;
 
-}
-
-void setUpRender(Curve& curve, CurveRender& renderer) {
-	renderer.SetUpVBO(curve.GetControlPoints(), curve.ConstructCurve(degree, knots, curve.GetControlPoints()));
 }
