@@ -10,6 +10,7 @@
 #include "Curve.hpp"
 #include "CurveRender.hpp"
 #include "Interpolation.hpp"
+#include "Approximation.hpp"
 
 #include <iostream>
 #include <vector>
@@ -35,11 +36,15 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 bool nearlyEqual(double a, double b, double epsilon);
 
 
-static int degree = 2;
-static int curDegree = 2;
+static int degree_Approx = 2;
+static int curDegree_Approx = 2;
+static int degree_Interp = 2;
+static int curDegree_Interp = 2;
+static int cur_conptsSize = 3;
+static int conptsSize = 3;
 bool regenerate(true);
 bool flag(true);
-bool hideConstruction[5] = { 1, 1, 1, 1, 1 };
+bool hideConstruction[8] = { 1, 1, 1, 1, 1, 1, 1, 1 };
 bool firstMouse = true;
 bool nowgenerate(true);
 bool isPointsChange(false);
@@ -47,9 +52,12 @@ bool isAddDegree(false);
 bool isChangedKnotValue(false);
 std::vector<double> knots;
 std::vector<glm::dvec3> sceen_points;
+std::vector<double> param;
+std::vector<glm::dvec3> controlPts;
 
-static Curve curve[5];
-static CurveRender crenderer[5];
+
+static Curve curve[8];
+static CurveRender crenderer[8];
 static PointsRender prenderer = PointsRender();
 
 #define UNIFORM_INTERP 1
@@ -64,14 +72,14 @@ float lastX, lastY;
 double cursorXpos, cursorYpos;
 
 bool firstGen = true;
-static bool FlagDraw[5] = { 1, 1, 1, 1, 1 };
-static float curveColor[5][3] = { { 0, 0.5, 0.6 }, { 0.1, 0.3, 1 }, { 0.7, 0.3, 0.4 }, { 0.7, 0.7, 1 }, { 1, 0.6, 0.5 } };
+static bool FlagDraw[8] = { 0, 0, 0, 0, 1, 1, 1, 1 };
+static float curveColor[8][3] = { { 0, 0.5, 0.6 }, { 0.1, 0.3, 1 }, { 0.7, 0.3, 0.4 }, { 0.7, 0.7, 1 }, { 1, 0.6, 0.5 }, { 1, 0.9, 0.2 }, { 1, 0.7, 1 }, { 0.9, 1, 0.6 } };
 
 void InitSceenPoints() {
 	sceen_points.push_back(glm::dvec3(-0.1, -0.6, 0));
 	sceen_points.push_back(glm::dvec3(0, 0, 0));
-	sceen_points.push_back(glm::dvec3(0.5, -0.2, 0));
 	sceen_points.push_back(glm::dvec3(0.3, 0.4, 0));
+	sceen_points.push_back(glm::dvec3(0.5, -0.2, 0));
 
 
 
@@ -83,16 +91,17 @@ void RenderGUI_new(Curve curve[5], CurveRender crenderer[5], bool& regenerate, b
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0.2, 0.4, 0.1));
 	if(ImGui::Begin("B-Spline curve fitting", nullptr, ImGuiWindowFlags_NoMove)) {
 		ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Once);
-		ImGui::Spacing();
-		ImGui::SetNextItemWidth(150.f);
-		ImGui::InputInt("degree", &curDegree);
-		if(curDegree != degree) {
-			degree = curDegree;
-			regenerate = true;
-		}
 
 		if(ImGui::TreeNode("Fitting Method")) {
 			if(ImGui::TreeNode("Interpolation")) {
+				ImGui::Spacing();
+				ImGui::SetNextItemWidth(150.f);
+				ImGui::InputInt("degree", &curDegree_Interp);
+
+				if(curDegree_Interp != degree_Interp) {
+					degree_Interp = curDegree_Interp;
+					regenerate = true;
+				}
 				if(ImGui::TreeNode("Uniform")) {
 					ImGui::Checkbox("Generate", &FlagDraw[0]);
 					ImGui::SameLine();
@@ -130,45 +139,127 @@ void RenderGUI_new(Curve curve[5], CurveRender crenderer[5], bool& regenerate, b
 				}
 				ImGui::TreePop();
 			}
+			if(ImGui::TreeNode("Approximation")) {
+				ImGui::Spacing();
+				ImGui::SetNextItemWidth(150.f);
+				ImGui::InputInt("control_points num", &cur_conptsSize);
+				if(cur_conptsSize >= sceen_points.size()) {
+					cur_conptsSize = sceen_points.size() - 1;
+				}
+				if(cur_conptsSize != conptsSize) {
+					regenerate = true;
+					conptsSize = cur_conptsSize;
+				}
+
+				ImGui::Spacing();
+				ImGui::SetNextItemWidth(150.f);
+				ImGui::InputInt("degree", &curDegree_Approx);
+				if(curDegree_Approx >= conptsSize) {
+					curDegree_Approx = conptsSize - 1;
+				}
+				if(curDegree_Approx != degree_Approx) {
+					degree_Approx = curDegree_Approx;
+					regenerate = true;
+				}
+
+
+				if(ImGui::TreeNode("Uniform")) {
+					ImGui::Checkbox("Generate", &FlagDraw[4]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[4], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[4]);
+					ImGui::TreePop();
+				}
+
+				if(ImGui::TreeNode("Chorld")) {
+					ImGui::Checkbox("Generate", &FlagDraw[5]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[5], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[5]);
+					ImGui::TreePop();
+				}
+
+				if(ImGui::TreeNode("Centripetal")) {
+					ImGui::Checkbox("Generate", &FlagDraw[6]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[6], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[6]);
+					ImGui::TreePop();
+				}
+
+				if(ImGui::TreeNode("Universal")) {
+					ImGui::Checkbox("Generate", &FlagDraw[7]);
+					ImGui::SameLine();
+					ImGui::ColorEdit3("color", curveColor[7], ImGuiColorEditFlags_NoInputs);
+
+					ImGui::Checkbox("hide control points", &hideConstruction[7]);
+					ImGui::TreePop();
+				}
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
+
 		}
-		ImGui::PopStyleColor();
-		ImGui::End();
 	}
+	ImGui::PopStyleColor();
+	ImGui::End();
 
 
 	if(regenerate) {
-		std::vector<double> knots;
-		std::vector<double> param;
-		std::vector<glm::dvec3> controlPts;
-
 		knots.clear(), param.clear(), controlPts.clear();
-		UniformInterp(sceen_points, degree, knots, param);
-		GlobalInterp(sceen_points, degree, knots, param, controlPts);
-		curve[0].ConstructCurve(degree, knots, controlPts);
+		UniformInterp(sceen_points, degree_Interp, knots, param);
+		GlobalInterp(sceen_points, degree_Interp, knots, param, controlPts);
+		curve[0].ConstructCurve(degree_Interp, knots, controlPts);
 
 		crenderer[0].SetUpVBO(curve[0].GetControlPoints(), curve[0].GetCurvePoints());
 
 		knots.clear(), param.clear(), controlPts.clear();
-		ChorldInterp(sceen_points, degree, knots, param);
-		GlobalInterp(sceen_points, degree, knots, param, controlPts);
-		curve[1].ConstructCurve(degree, knots, controlPts);
+		ChorldInterp(sceen_points, degree_Interp, knots, param);
+		GlobalInterp(sceen_points, degree_Interp, knots, param, controlPts);
+		curve[1].ConstructCurve(degree_Interp, knots, controlPts);
 
 		crenderer[1].SetUpVBO(curve[1].GetControlPoints(), curve[1].GetCurvePoints());
 
 		knots.clear(), param.clear(), controlPts.clear();
-		CentriperalInterp(sceen_points, degree, knots, param);
-		GlobalInterp(sceen_points, degree, knots, param, controlPts);
-		curve[2].ConstructCurve(degree, knots, controlPts);
+		CentripetalInterp(sceen_points, degree_Interp, knots, param);
+		GlobalInterp(sceen_points, degree_Interp, knots, param, controlPts);
+		curve[2].ConstructCurve(degree_Interp, knots, controlPts);
 
 		crenderer[2].SetUpVBO(curve[2].GetControlPoints(), curve[2].GetCurvePoints());
 
 		knots.clear(), param.clear(), controlPts.clear();
-		UniversalInterp(sceen_points, degree, knots, param);
-		GlobalInterp(sceen_points, degree, knots, param, controlPts);
-		curve[3].ConstructCurve(degree, knots, controlPts);
+		UniversalInterp(sceen_points, degree_Interp, knots, param);
+		GlobalInterp(sceen_points, degree_Interp, knots, param, controlPts);
+		curve[3].ConstructCurve(degree_Interp, knots, controlPts);
 
 		crenderer[3].SetUpVBO(curve[3].GetControlPoints(), curve[3].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		Approximation(0, sceen_points, degree_Approx, knots, param, conptsSize - 1, controlPts);
+		curve[4].ConstructCurve(degree_Approx, knots, controlPts);
+
+		crenderer[4].SetUpVBO(curve[4].GetControlPoints(), curve[4].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		Approximation(1, sceen_points, degree_Approx, knots, param, conptsSize - 1, controlPts);
+		curve[5].ConstructCurve(degree_Approx, knots, controlPts);
+
+		crenderer[5].SetUpVBO(curve[5].GetControlPoints(), curve[5].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		Approximation(2, sceen_points, degree_Approx, knots, param, conptsSize - 1, controlPts);
+		curve[6].ConstructCurve(degree_Approx, knots, controlPts);
+
+		crenderer[6].SetUpVBO(curve[6].GetControlPoints(), curve[6].GetCurvePoints());
+
+		knots.clear(), param.clear(), controlPts.clear();
+		Approximation(3, sceen_points, degree_Approx, knots, param, conptsSize - 1, controlPts);
+		curve[7].ConstructCurve(degree_Approx, knots, controlPts);
+
+		crenderer[7].SetUpVBO(curve[7].GetControlPoints(), curve[7].GetCurvePoints());
 
 		regenerate = false;
 	}
@@ -227,7 +318,7 @@ int main(int, char**) {
 	ImGui::GetIO().FontGlobalScale = 1.0;
 	ImGui::GetIO().Fonts->AddFontFromFileTTF("../assets/fonts/NotoSans-Regular.ttf", 28.0f);
 
-	for(int i = 0; i < 5; i++) {
+	for(int i = 0; i < 8; i++) {
 		crenderer[i] = CurveRender();
 		crenderer[i].Clear();
 		crenderer[i].Init();
@@ -285,7 +376,7 @@ int main(int, char**) {
 		}
 		RenderGUI_new(curve, crenderer, regenerate, hideConstruction);
 		prenderer.Draw(shaderPoints);
-		for(int i = 0; i < 4; i++) {
+		for(int i = 0; i < 8; i++) {
 			if(FlagDraw[i])
 				crenderer[i].Draw(shaderCurve, shaderCPts, glm::vec3(curveColor[i][0], curveColor[i][1], curveColor[i][2]), hideConstruction[i]);
 

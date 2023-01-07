@@ -84,7 +84,7 @@ void ChorldInterp(std::vector<glm::dvec3> points, int degree,
 
 }
 
-void CentriperalInterp(std::vector<glm::dvec3> points, int degree,
+void CentripetalInterp(std::vector<glm::dvec3> points, int degree,
 	std::vector<double>& knots, std::vector<double>& param) {
 
 	int n = points.size();

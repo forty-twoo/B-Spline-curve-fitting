@@ -58,7 +58,7 @@ void CurveRender::SetUpVBO(std::vector<glm::dvec3>& cPts, std::vector<glm::dvec3
 }
 
 void CurveRender::Draw(const Shader& shaderCurve, const Shader& shaderCPts, glm::vec3 curveColor, bool hideConstruction) {
-	glLineWidth(5.0);
+	glLineWidth(3.0);
 	shaderCurve.use();
 	shaderCurve.setVec3("curveColor", curveColor);
 	shaderCPts.use();

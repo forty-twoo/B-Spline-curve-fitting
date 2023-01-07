@@ -17,7 +17,7 @@ void UniversalInterp(std::vector<glm::dvec3> points, int degree,
 	std::vector<double>& knots, std::vector<double>& param);
 
 
-void CentriperalInterp(std::vector<glm::dvec3> points, int degree,
+void CentripetalInterp(std::vector<glm::dvec3> points, int degree,
 	std::vector<double>& knots, std::vector<double>& param);
 
 #endif // !INTERPOLATION_HPP_
