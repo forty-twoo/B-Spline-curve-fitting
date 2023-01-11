@@ -14,7 +14,7 @@ The fitting method include
   - Chorld
   - Universal
 
-![image](https://github.com/forty-twoo/B-Spline-curve-fitting/blob/master/images/show.gif)
+<img src="https://github.com/forty-twoo/B-Spline-curve-fitting" width="500px">
 
 ## Building 
 
