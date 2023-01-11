@@ -14,7 +14,24 @@ The fitting method include
   - Chorld
   - Universal
 
-<img src="https://github.com/forty-twoo/B-Spline-curve-fitting/blob/master/images/show.gif" width="500px">
+<img src="https://github.com/forty-twoo/B-Spline-curve-fitting/blob/master/images/show.gif" width="800px">
+
+<img src="https://github.com/forty-twoo/B-Spline-curve-fitting/blob/master/images/pic.png" width="800px">
+
+## Built With
+
+- [tinynurbs](https://github.com/pradeep-pyro/tinynurbs)
+- [imgui](https://github.com/ocornut/imgui)
+- [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
+- OpenGL
+
+The core fitting code are wrote by myself and the primary Reference is [https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/](https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/) 
+
+
+
+### Usage
+
+Right click your mouse to add points, drag your left mouse to move point. You could click the check box of the left panel based on your need.
 
 ## Building 
 
@@ -44,3 +61,5 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 
 
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
