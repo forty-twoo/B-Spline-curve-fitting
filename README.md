@@ -25,7 +25,7 @@ The fitting method include
 - [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 - OpenGL
 
-The core fitting code are wrote by myself and the primary Reference is [https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/](https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/) 
+The fitting code are wrote with the help of  [https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/](https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/) 
 
 
 
