@@ -1,7 +1,5 @@
 # B-Spline-curve-fitting
-It's a program that do **B-spline curve fitting** for discrete points in real time.
-
-
+It's a program that do B-spline curve fitting for discrete points in real time.
 
 The fitting method include
 
@@ -15,6 +13,8 @@ The fitting method include
   - Centripetal
   - Chorld
   - Universal
+
+![image](https://github.com/forty-twoo/B-Spline-curve-fitting/blob/master/images/show.gif)
 
 ## Building 
 
